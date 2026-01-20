@@ -1,15 +1,24 @@
 <!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
 <idea-plugin>
-    <id>com.github.kingeugene.playtechplugin</id>
+    <id>playtech.plugins.template</id>
     <name>Playtech-plugin</name>
     <vendor>kingeugene</vendor>
 
     <depends>com.intellij.modules.platform</depends>
 
-    <resource-bundle>messages.MyBundle</resource-bundle>
+    <actions>
+        <group id="CopyFileToGroup"
+               text="Copy to"
+               description="Copy selected file to a specific folder"
+               popup="true">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+        </group>
+    </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow factoryClass="com.github.kingeugene.playtechplugin.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
-        <postStartupActivity implementation="com.github.kingeugene.playtechplugin.startup.MyProjectActivity" />
+        <projectService serviceInterface="org.jetbrains.plugins.template.popupDialog.DynamicActionRegistrar"
+                        serviceImplementation="org.jetbrains.plugins.template.popupDialog.DynamicActionRegistrar"/>
+
+        <postStartupActivity implementation="org.jetbrains.plugins.template.popupDialog.DynamicActionInitializer"/>
     </extensions>
 </idea-plugin>
