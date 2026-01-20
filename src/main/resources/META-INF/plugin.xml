@@ -20,5 +20,10 @@
                         serviceImplementation="org.jetbrains.plugins.template.popupDialog.DynamicActionRegistrar"/>
 
         <postStartupActivity implementation="org.jetbrains.plugins.template.popupDialog.DynamicActionInitializer"/>
+
+        <projectService serviceInterface="org.jetbrains.plugins.template.branding.BrandService"
+                        serviceImplementation="org.jetbrains.plugins.template.branding.BrandService"/>
+
+        <editorNotificationProvider implementation="org.jetbrains.plugins.template.branding.BrandSwitcherEditorNotificationProvider"/>
     </extensions>
 </idea-plugin>
