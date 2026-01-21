@@ -14,7 +14,7 @@ import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.application.ApplicationManager
-import java.nio.file.Paths
+import com.intellij.openapi.components.service
 import java.util.concurrent.ConcurrentHashMap
 
 enum class BrandRootType {
@@ -71,6 +71,11 @@ class BrandService(private val project: Project) {
         return segments.any { it.startsWith("app-react") }
     }
 
+    fun dispose() {
+        connection.dispose()
+        cache.clear()
+    }
+
     fun getBrandContext(file: VirtualFile): BrandContext? {
         val roots = getBrandRoots()
         if (roots.isEmpty()) return null
@@ -105,13 +110,7 @@ class BrandService(private val project: Project) {
     }
 
     fun getBrandRoots(): List<BrandRoot> {
-        val baseDir = project.basePath?.let {
-            VfsUtil.findFile(Paths.get(it), true)
-        }
-
-        if (baseDir == null) {
-            return emptyList()
-        }
+        val baseDir = project.baseDir ?: return emptyList()
 
         val candidates = baseDir.children.filter { it.isDirectory && it.name.startsWith("app-react") }
 
@@ -197,3 +196,6 @@ class BrandService(private val project: Project) {
         }
     }
 }
+
+val Project.brandService: BrandService
+    get() = this.service()

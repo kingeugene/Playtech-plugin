@@ -59,7 +59,7 @@ class BrandSwitcherEditorNotificationProvider : EditorNotificationProvider {
 
                     label.addMouseListener(object : java.awt.event.MouseAdapter() {
                         override fun mouseClicked(e: java.awt.event.MouseEvent?) {
-                            state.targetFile.let {
+                            state.targetFile?.let {
                                 com.intellij.openapi.fileEditor.OpenFileDescriptor(project, it).navigate(true)
                             }
                         }
