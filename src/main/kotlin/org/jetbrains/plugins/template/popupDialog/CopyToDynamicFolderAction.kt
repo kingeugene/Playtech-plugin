@@ -2,12 +2,15 @@ package org.jetbrains.plugins.template.popupDialog
 
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import org.jetbrains.plugins.template.branding.brandService
 
 class CopyToDynamicFolderAction(folderLabel: String, private val folderName: String) : AnAction("Copy to $folderLabel") {
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         val presentation = e.presentation
