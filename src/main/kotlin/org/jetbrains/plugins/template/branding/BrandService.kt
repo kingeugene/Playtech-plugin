@@ -72,8 +72,7 @@ class BrandService(private val project: Project) {
     }
 
     fun getBrandContext(file: VirtualFile): BrandContext? {
-        val roots = findBrandRoots()
-
+        val roots = getBrandRoots()
         if (roots.isEmpty()) return null
 
         val currentRoot = roots.firstOrNull { VfsUtilCore.isAncestor(it.root, file, true) } ?: return null
@@ -92,7 +91,7 @@ class BrandService(private val project: Project) {
     }
 
     private fun computeBrandStates(context: BrandContext): List<BrandState> {
-        val roots = findBrandRoots()
+        val roots = getBrandRoots()
         if (roots.isEmpty()) return emptyList()
 
         return roots.map { root ->
@@ -105,7 +104,7 @@ class BrandService(private val project: Project) {
         }
     }
 
-    private fun findBrandRoots(): List<BrandRoot> {
+    fun getBrandRoots(): List<BrandRoot> {
         val baseDir = project.basePath?.let {
             VfsUtil.findFile(Paths.get(it), true)
         }
@@ -140,6 +139,9 @@ class BrandService(private val project: Project) {
 
         return core + interlayer + brands
     }
+
+    fun findRootByName(name: String): BrandRoot? =
+        getBrandRoots().firstOrNull { it.name == name }
 
     fun invalidateAll() {
         cache.clear()
