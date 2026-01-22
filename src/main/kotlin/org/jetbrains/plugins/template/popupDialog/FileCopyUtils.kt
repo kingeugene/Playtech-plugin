@@ -35,11 +35,22 @@ fun copyFileToFolder(event: AnActionEvent, targetFolderName: String) {
     }
 
     brandService.copyToBrand(context, targetRoot) { created ->
-        if (created == null) {
-            Messages.showErrorDialog(project, "Failed to copy to ${targetRoot.displayName}", "Error")
+        // Verify that the file actually exists even if created is null
+        // (sometimes VfsUtil.copyFile returns null but the file is still created)
+        val actuallyExists = if (!selectedFile.isDirectory) {
+            val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
+            targetPath != null
         } else {
+            // For directories, check if the directory exists
+            val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
+            targetPath != null && targetPath.isDirectory
+        }
+        
+        if (created != null || actuallyExists) {
             val itemType = if (selectedFile.isDirectory) "directory" else "file"
             Messages.showInfoMessage(project, "Copied $itemType to ${targetRoot.displayName}", "Success")
+        } else {
+            Messages.showErrorDialog(project, "Failed to copy to ${targetRoot.displayName}", "Error")
         }
     }
 }

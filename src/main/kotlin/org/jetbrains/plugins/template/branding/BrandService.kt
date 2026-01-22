@@ -180,6 +180,23 @@ class BrandService(private val project: Project) {
                             createdFile = VfsUtil.copyFile(project, context.sourceFile, targetParent, context.sourceFile.name)
                         }
                         
+                        // Verify that the file was actually created by checking if it exists
+                        if (createdFile != null) {
+                            val targetPath = if (parentRelativePath.isEmpty()) {
+                                context.sourceFile.name
+                            } else {
+                                "$parentRelativePath/${context.sourceFile.name}"
+                            }
+                            val verifiedFile = targetRoot.root.findFileByRelativePath(targetPath)
+                            if (verifiedFile != null) {
+                                createdFile = verifiedFile
+                            } else {
+                                // File was copied but not found - might be a timing issue, refresh and try again
+                                targetRoot.root.refresh(false, true)
+                                createdFile = targetRoot.root.findFileByRelativePath(targetPath)
+                            }
+                        }
+                        
                         invalidateForFile(context.sourceFile)
                         createdFile?.let { invalidateForFile(it) }
                     } catch (e: Exception) {
@@ -190,8 +207,14 @@ class BrandService(private val project: Project) {
 
                 val result = createdFile
                 // Only open files in editor, not directories
+                // Don't let navigation errors affect the copy result
                 if (result != null && !isDirectory) {
-                    OpenFileDescriptor(project, result).navigate(true)
+                    try {
+                        OpenFileDescriptor(project, result).navigate(true)
+                    } catch (e: Exception) {
+                        logger.warn("Failed to open copied file in editor, but copy was successful", e)
+                        // Continue - copy was successful even if opening failed
+                    }
                 }
 
                 ApplicationManager.getApplication().invokeLater {
