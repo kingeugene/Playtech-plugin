@@ -4,8 +4,8 @@ import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.diagnostic.Logger
+import org.jetbrains.plugins.template.branding.brandService
 import java.util.Locale.getDefault
 
 @Service
@@ -13,37 +13,22 @@ class DynamicActionRegistrar {
 
     private val logger = Logger.getInstance(DynamicActionRegistrar::class.java)
 
-    // List of folders to ignore
-    private val ignoredFolders = listOf(
-        "app-react-example-theme",
-        "app-react-licensee",
-        "app-react-all-theme",
-    )
-
     fun registerActions(project: Project) {
-        // Get the base directory of the project
-        val baseDir = project.basePath ?: return
-        val virtualBaseDir = LocalFileSystem.getInstance().findFileByPath(baseDir) ?: return
-
-        // Find all directories containing "app-react-" and not in ignoredFolders
-        val targetFolders = virtualBaseDir.children.filter {
-            it.isDirectory &&
-                    it.name.contains("app-react-") &&
-                    !ignoredFolders.contains(it.name)
-        }
+        // Use BrandService to get roots in the same order (CORE, INTERLAYER, BRAND sorted)
+        val brandService = project.brandService
+        val brandRoots = brandService.getBrandRoots()
 
         // Register actions dynamically
         val actionManager = ActionManager.getInstance()
         val group = actionManager.getAction("CopyFileToGroup") as DefaultActionGroup
 
-        targetFolders.forEach { folder ->
-            val folderName = folder.name
-            val actionText = folderName.removePrefix("app-react-").replace("-theme", "")
-                .replaceFirstChar { if (it.isLowerCase()) it.titlecase(getDefault()) else it.toString() }
+        brandRoots.forEach { brandRoot ->
+            val folderName = brandRoot.name
+            val actionText = brandRoot.displayName
 
             // Create the action for this folder
             val action = CopyToDynamicFolderAction(actionText, folderName)
-            val actionId = "CopyTo${actionText}Action"
+            val actionId = "CopyTo${actionText.replace(" ", "")}Action"
 
             // Register the action
             if (actionManager.getAction(actionId) == null) {
