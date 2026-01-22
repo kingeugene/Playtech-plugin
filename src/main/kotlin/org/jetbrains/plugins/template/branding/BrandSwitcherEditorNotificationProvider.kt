@@ -1,5 +1,8 @@
 package org.jetbrains.plugins.template.branding
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.project.Project
@@ -21,17 +24,25 @@ import javax.swing.JPanel
 class BrandSwitcherEditorNotificationProvider : EditorNotificationProvider {
 
     override fun collectNotificationData(project: Project, file: VirtualFile): Function<in FileEditor, out JComponent?>? {
+        // EditorNotificationProvider.collectNotificationData may be called from Dispatchers.UI
+        // We need to wrap ALL model access in ReadAction to avoid RW lock violations
         val brandService = project.service<BrandService>()
-        val context = brandService.getBrandContext(file) ?: return null
+        
+        // Use ReadAction to safely access VFS model - compute everything upfront
+        val data = ReadAction.compute<Pair<BrandContext, List<BrandState>>?, RuntimeException> {
+            val context = brandService.getBrandContext(file) ?: return@compute null
+            val states = brandService.getBrandStates(context)
+            if (states.isEmpty()) return@compute null
+            Pair(context, states)
+        } ?: return null
 
+        val (context, states) = data
         return Function<FileEditor, JComponent?> { _ ->
-            createComponent(project, context)
+            createComponent(project, context, states)
         }
     }
 
-    private fun createComponent(project: Project, context: BrandContext): JComponent {
-        val brandService = project.service<BrandService>()
-        val states = brandService.getBrandStates(context)
+    private fun createComponent(project: Project, context: BrandContext, states: List<BrandState>): JComponent {
         if (states.isEmpty()) return JPanel() // should not happen but keep safe
 
         val panel = NonOpaquePanel(BorderLayout())
@@ -83,11 +94,15 @@ class BrandSwitcherEditorNotificationProvider : EditorNotificationProvider {
                             )
 
                             if (answer == Messages.YES) {
+                                val brandService = project.service<BrandService>()
                                 brandService.copyToBrand(context, state.root) { created ->
-                                    EditorNotifications.getInstance(project).updateNotifications(context.sourceFile)
-                                    created?.let {
-                                        EditorNotifications.getInstance(project).updateNotifications(it)
-                                    }
+                                    // Ensure updateNotifications is called from EDT, not from a coroutine context
+                                    ApplicationManager.getApplication().invokeLater({
+                                        EditorNotifications.getInstance(project).updateNotifications(context.sourceFile)
+                                        created?.let {
+                                            EditorNotifications.getInstance(project).updateNotifications(it)
+                                        }
+                                    }, ModalityState.defaultModalityState())
                                 }
                             }
                         }

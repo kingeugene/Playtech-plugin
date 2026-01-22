@@ -14,7 +14,7 @@ import com.intellij.util.messages.MessageBusConnection
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.components.service
+import com.intellij.openapi.application.ModalityState
 import java.util.concurrent.ConcurrentHashMap
 
 enum class BrandRootType {
@@ -59,8 +59,11 @@ class BrandService(private val project: Project) {
         connection = project.messageBus.connect()
         connection.subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
             override fun after(events: MutableList<out VFileEvent>) {
+                // VFS events might be delivered on UI thread, move cache invalidation to background
                 if (events.any { it.file != null && isThemeRelatedPath(it.file!!) }) {
-                    invalidateAll()
+                    AppExecutorUtil.getAppExecutorService().execute {
+                        invalidateAll()
+                    }
                 }
             }
         })
@@ -217,14 +220,15 @@ class BrandService(private val project: Project) {
                     }
                 }
 
-                ApplicationManager.getApplication().invokeLater {
+                // Ensure callback runs on EDT, not in a coroutine context
+                ApplicationManager.getApplication().invokeLater({
                     onFinished(result)
-                }
+                }, ModalityState.defaultModalityState())
             } catch (e: Exception) {
                 logger.warn("Unexpected error while copying ${if (isDirectory) "directory" else "file"} to brand '${targetRoot.name}'", e)
-                ApplicationManager.getApplication().invokeLater {
+                ApplicationManager.getApplication().invokeLater({
                     onFinished(null)
-                }
+                }, ModalityState.defaultModalityState())
             }
         }
     }

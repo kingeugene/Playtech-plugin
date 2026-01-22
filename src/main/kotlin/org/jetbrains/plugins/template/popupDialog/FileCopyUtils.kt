@@ -3,9 +3,12 @@ package org.jetbrains.plugins.template.popupDialog
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ModalityState
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.util.concurrency.AppExecutorUtil
 import org.jetbrains.plugins.template.branding.BrandRoot
 import org.jetbrains.plugins.template.branding.brandService
 
@@ -35,23 +38,28 @@ fun copyFileToFolder(event: AnActionEvent, targetFolderName: String) {
     }
 
     brandService.copyToBrand(context, targetRoot) { created ->
-        // Verify that the file actually exists even if created is null
-        // (sometimes VfsUtil.copyFile returns null but the file is still created)
-        val actuallyExists = if (!selectedFile.isDirectory) {
-            val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
-            targetPath != null
-        } else {
-            // For directories, check if the directory exists
-            val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
-            targetPath != null && targetPath.isDirectory
-        }
-        
-        if (created != null || actuallyExists) {
-            val itemType = if (selectedFile.isDirectory) "directory" else "file"
-            Messages.showInfoMessage(project, "Copied $itemType to ${targetRoot.displayName}", "Success")
-        } else {
-            Messages.showErrorDialog(project, "Failed to copy to ${targetRoot.displayName}", "Error")
-        }
+        // Callback might be called from a coroutine context, wrap VFS access in ReadAction
+        // and ensure UI updates happen on EDT
+        ReadAction.nonBlocking<Boolean> {
+            // Verify that the file actually exists even if created is null
+            // (sometimes VfsUtil.copyFile returns null but the file is still created)
+            if (!selectedFile.isDirectory) {
+                val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
+                targetPath != null
+            } else {
+                // For directories, check if the directory exists
+                val targetPath = targetRoot.root.findFileByRelativePath(context.relativePath)
+                targetPath != null && targetPath.isDirectory
+            }
+        }.finishOnUiThread(ModalityState.defaultModalityState()) { actuallyExists ->
+            // This runs on EDT, safe to show dialogs
+            if (created != null || actuallyExists) {
+                val itemType = if (selectedFile.isDirectory) "directory" else "file"
+                Messages.showInfoMessage(project, "Copied $itemType to ${targetRoot.displayName}", "Success")
+            } else {
+                Messages.showErrorDialog(project, "Failed to copy to ${targetRoot.displayName}", "Error")
+            }
+        }.submit(AppExecutorUtil.getAppExecutorService())
     }
 }
 
