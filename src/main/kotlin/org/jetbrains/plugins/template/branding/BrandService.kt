@@ -172,8 +172,14 @@ class BrandService(private val project: Project) {
                             VfsUtil.createDirectoryIfMissing(targetRoot.root, parentRelativePath)
                         }
 
-                        // VfsUtil.copyFile handles both files and directories (recursive for directories)
-                        createdFile = VfsUtil.copyFile(project, context.sourceFile, targetParent, context.sourceFile.name)
+                        if (isDirectory) {
+                            // For directories, use recursive copy
+                            createdFile = copyDirectoryRecursively(context.sourceFile, targetParent, context.sourceFile.name)
+                        } else {
+                            // For files, use VfsUtil.copyFile
+                            createdFile = VfsUtil.copyFile(project, context.sourceFile, targetParent, context.sourceFile.name)
+                        }
+                        
                         invalidateForFile(context.sourceFile)
                         createdFile?.let { invalidateForFile(it) }
                     } catch (e: Exception) {
@@ -197,6 +203,44 @@ class BrandService(private val project: Project) {
                     onFinished(null)
                 }
             }
+        }
+    }
+
+    /**
+     * Recursively copy a directory and all its contents to the target parent directory.
+     */
+    private fun copyDirectoryRecursively(sourceDir: VirtualFile, targetParent: VirtualFile, newName: String): VirtualFile? {
+        try {
+            // Check if target directory already exists
+            var targetDir = targetParent.findChild(newName)
+            
+            if (targetDir == null || !targetDir.isDirectory) {
+                // Create the target directory if it doesn't exist
+                targetDir = targetParent.createChildDirectory(project, newName)
+            }
+            
+            if (targetDir == null) {
+                logger.warn("Failed to create target directory '$newName' in ${targetParent.path}")
+                return null
+            }
+
+            // Copy all children (files and subdirectories)
+            sourceDir.children.forEach { child ->
+                if (child.isDirectory) {
+                    copyDirectoryRecursively(child, targetDir, child.name)
+                } else {
+                    // Skip if file already exists (to avoid overwriting)
+                    val existingFile = targetDir.findChild(child.name)
+                    if (existingFile == null) {
+                        VfsUtil.copyFile(project, child, targetDir, child.name)
+                    }
+                }
+            }
+
+            return targetDir
+        } catch (e: Exception) {
+            logger.warn("Failed to copy directory '${sourceDir.name}'", e)
+            return null
         }
     }
 }
