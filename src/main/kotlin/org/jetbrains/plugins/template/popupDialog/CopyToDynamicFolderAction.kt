@@ -15,9 +15,41 @@ class CopyToDynamicFolderAction(folderLabel: String, private val folderName: Str
     override fun update(e: AnActionEvent) {
         val presentation = e.presentation
         val project: Project? = e.project
-        val file: VirtualFile? = e.getData(CommonDataKeys.VIRTUAL_FILE)
+        val files: Array<VirtualFile>? = e.getData(CommonDataKeys.VIRTUAL_FILE_ARRAY)
+        val singleFile: VirtualFile? = e.getData(CommonDataKeys.VIRTUAL_FILE)
 
-        if (project == null || file == null || file.isDirectory) {
+        if (project == null) {
+            presentation.isEnabledAndVisible = false
+            return
+        }
+
+        // Handle multi-selection or single selection
+        val selectedFiles = files?.toList() ?: (singleFile?.let { listOf(it) } ?: emptyList())
+        
+        if (selectedFiles.isEmpty()) {
+            presentation.isEnabledAndVisible = false
+            return
+        }
+
+        // Check if selection contains any directories
+        val hasDirectories = selectedFiles.any { it.isDirectory }
+        
+        // If selection contains directories, always enable (don't check target existence)
+        if (hasDirectories) {
+            val targetRoot = project.brandService.findRootByName(folderName)
+            if (targetRoot == null) {
+                presentation.isEnabledAndVisible = false
+                return
+            }
+            presentation.isVisible = true
+            presentation.isEnabled = true
+            presentation.description = "Copy to ${targetRoot.displayName}"
+            return
+        }
+
+        // For files only: check target existence and disable if exists
+        val file = selectedFiles.firstOrNull()
+        if (file == null || file.isDirectory) {
             presentation.isEnabledAndVisible = false
             return
         }

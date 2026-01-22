@@ -151,11 +151,13 @@ class BrandService(private val project: Project) {
     }
 
     /**
-     * Copy the given source file to the specified brand root, preserving the relative path.
+     * Copy the given source file or directory to the specified brand root, preserving the relative path.
      * Returns the created [VirtualFile] on success, or null on failure.
+     * For directories, the copy is recursive. Files are opened in the editor after copying.
      */
     fun copyToBrand(context: BrandContext, targetRoot: BrandRoot, onFinished: (VirtualFile?) -> Unit) {
         val relativePath = context.relativePath
+        val isDirectory = context.sourceFile.isDirectory
 
         AppExecutorUtil.getAppExecutorService().submit {
             try {
@@ -170,17 +172,19 @@ class BrandService(private val project: Project) {
                             VfsUtil.createDirectoryIfMissing(targetRoot.root, parentRelativePath)
                         }
 
+                        // VfsUtil.copyFile handles both files and directories (recursive for directories)
                         createdFile = VfsUtil.copyFile(project, context.sourceFile, targetParent, context.sourceFile.name)
                         invalidateForFile(context.sourceFile)
                         createdFile?.let { invalidateForFile(it) }
                     } catch (e: Exception) {
-                        logger.warn("Failed to copy file to brand '${targetRoot.name}'", e)
+                        logger.warn("Failed to copy ${if (isDirectory) "directory" else "file"} to brand '${targetRoot.name}'", e)
                         createdFile = null
                     }
                 }
 
                 val result = createdFile
-                if (result != null) {
+                // Only open files in editor, not directories
+                if (result != null && !isDirectory) {
                     OpenFileDescriptor(project, result).navigate(true)
                 }
 
@@ -188,7 +192,7 @@ class BrandService(private val project: Project) {
                     onFinished(result)
                 }
             } catch (e: Exception) {
-                logger.warn("Unexpected error while copying file to brand '${targetRoot.name}'", e)
+                logger.warn("Unexpected error while copying ${if (isDirectory) "directory" else "file"} to brand '${targetRoot.name}'", e)
                 ApplicationManager.getApplication().invokeLater {
                     onFinished(null)
                 }

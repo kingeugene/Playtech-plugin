@@ -15,10 +15,6 @@ fun copyFileToFolder(event: AnActionEvent, targetFolderName: String) {
     val selectedFile: VirtualFile = event.getData(CommonDataKeys.VIRTUAL_FILE)
         ?: return showErrorLater("No file selected")
 
-    if (selectedFile.isDirectory) {
-        return showErrorLater("Copy from directory is not supported. Please select a file.")
-    }
-
     val brandService = project.brandService
     val context = brandService.getBrandContext(selectedFile)
         ?: return showErrorLater("Selected file is not inside a recognized theme root")
@@ -30,16 +26,20 @@ fun copyFileToFolder(event: AnActionEvent, targetFolderName: String) {
         return showErrorLater("File is already in the target brand")
     }
 
-    val existing = targetRoot.root.findFileByRelativePath(context.relativePath)
-    if (existing != null) {
-        return showErrorLater("File already exists in '${targetRoot.displayName}'")
+    // For files only: check if target already exists (folders are always allowed)
+    if (!selectedFile.isDirectory) {
+        val existing = targetRoot.root.findFileByRelativePath(context.relativePath)
+        if (existing != null) {
+            return showErrorLater("File already exists in '${targetRoot.displayName}'")
+        }
     }
 
     brandService.copyToBrand(context, targetRoot) { created ->
         if (created == null) {
-            Messages.showErrorDialog(project, "Failed to copy file to ${targetRoot.displayName}", "Error")
+            Messages.showErrorDialog(project, "Failed to copy to ${targetRoot.displayName}", "Error")
         } else {
-            Messages.showInfoMessage(project, "Copied to ${targetRoot.displayName}", "Success")
+            val itemType = if (selectedFile.isDirectory) "directory" else "file"
+            Messages.showInfoMessage(project, "Copied $itemType to ${targetRoot.displayName}", "Success")
         }
     }
 }
