@@ -1,52 +1,110 @@
-# Playtech-plugin
-
-![Build](https://github.com/kingeugene/Playtech-plugin/workflows/Build/badge.svg)
-[![Version](https://img.shields.io/jetbrains/plugin/v/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-[![Downloads](https://img.shields.io/jetbrains/plugin/d/MARKETPLACE_ID.svg)](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID)
-
-## Template ToDo list
-- [x] Create a new [IntelliJ Platform Plugin Template][template] project.
-- [ ] Get familiar with the [template documentation][template].
-- [ ] Adjust the [pluginGroup](./gradle.properties) and [pluginName](./gradle.properties), as well as the [id](./src/main/resources/META-INF/plugin.xml) and [sources package](./src/main/kotlin).
-- [ ] Adjust the plugin description in `README` (see [Tips][docs:plugin-description])
-- [ ] Review the [Legal Agreements](https://plugins.jetbrains.com/docs/marketplace/legal-agreements.html?from=IJPluginTemplate).
-- [ ] [Publish a plugin manually](https://plugins.jetbrains.com/docs/intellij/publishing-plugin.html?from=IJPluginTemplate) for the first time.
-- [ ] Set the `MARKETPLACE_ID` in the above README badges. You can obtain it once the plugin is published to JetBrains Marketplace.
-- [ ] Set the [Plugin Signing](https://plugins.jetbrains.com/docs/intellij/plugin-signing.html?from=IJPluginTemplate) related [secrets](https://github.com/JetBrains/intellij-platform-plugin-template#environment-variables).
-- [ ] Set the [Deployment Token](https://plugins.jetbrains.com/docs/marketplace/plugin-upload.html?from=IJPluginTemplate).
-- [ ] Click the <kbd>Watch</kbd> button on the top of the [IntelliJ Platform Plugin Template][template] to be notified about releases containing new features and fixes.
-- [ ] Configure the [CODECOV_TOKEN](https://docs.codecov.com/docs/quick-start) secret for automated test coverage reports on PRs
-
-<!-- Plugin description -->
-This Fancy IntelliJ Platform Plugin is going to be your implementation of the brilliant ideas that you have.
-
-This specific section is a source for the [plugin.xml](/src/main/resources/META-INF/plugin.xml) file which will be extracted by the [Gradle](/build.gradle.kts) during the build process.
-
-To keep everything working, do not remove `<!-- ... -->` sections. 
-<!-- Plugin description end -->
-
-## Installation
-
-- Using the IDE built-in plugin system:
-
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>Marketplace</kbd> > <kbd>Search for "Playtech-plugin"</kbd> >
-  <kbd>Install</kbd>
-
-- Using JetBrains Marketplace:
-
-  Go to [JetBrains Marketplace](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID) and install it by clicking the <kbd>Install to ...</kbd> button in case your IDE is running.
-
-  You can also download the [latest release](https://plugins.jetbrains.com/plugin/MARKETPLACE_ID/versions) from JetBrains Marketplace and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
-- Manually:
-
-  Download the [latest release](https://github.com/kingeugene/Playtech-plugin/releases/latest) and install it manually using
-  <kbd>Settings/Preferences</kbd> > <kbd>Plugins</kbd> > <kbd>⚙️</kbd> > <kbd>Install plugin from disk...</kbd>
-
+# Brand Tools
 
 ---
-Plugin based on the [IntelliJ Platform Plugin Template][template].
 
-[template]: https://github.com/JetBrains/intellij-platform-plugin-template
-[docs:plugin-description]: https://plugins.jetbrains.com/docs/intellij/plugin-user-experience.html#plugin-description-and-presentation
+<!-- Plugin description -->
+## Overview
+**Brand Tools** is a plugin that simplifies working with multi-brand / multi-theme repositories. It provides fast file copying and brand-aware navigation directly in the editor.
+
+This plugin is designed for projects where the same file structure exists across **core**, **interlayer**, and multiple **brand themes**.
+
+---
+<!-- Plugin description end -->
+## ✨ Features
+
+### 1. Brand-aware file and folder copy
+- Context menu actions in Project View and Editor:
+    - **Copy to Core**
+    - **Copy to Interlayer**
+    - **Copy to \<Brand\>**
+- Behavior:
+    - Preserves relative path from source root
+    - Automatically creates missing directories
+    - Supports single files, multiple files, and entire folders (recursive copy)
+- Smart blocking:
+    - Copy actions disabled only if the file already exists in the target brand
+    - Folder copy is never blocked, even if some files already exist
+
+---
+
+### 2. Editor Brand Switcher
+- Displays a brand switcher on the right side of the editor (similar to WebStorm’s browser selectors).
+- For each brand:
+    - **Active brand (enabled):** file exists → click opens corresponding file
+    - **Inactive brand (greyed):** file does not exist → click prompts:
+      > “File does not exist in this brand. Do you want to copy it?”
+- After copying:
+    - New file opens automatically
+    - Brand availability states update instantly
+- Current brand is visually distinguished (highlighted/selected)
+
+---
+
+### 3. Correct Git & VFS integration
+- All file operations use IntelliJ Virtual File System (VFS):
+    - WebStorm immediately recognizes new files
+    - Standard “Add file to Git?” dialog appears
+    - Files remain fully editable, movable, and deletable without IDE restart
+
+---
+
+## 🧠 Why this plugin exists
+In large multi-brand repositories:
+- The same file often exists in several theme folders
+- Switching between brand versions is slow
+- Manual copying frequently breaks Git/VFS state
+
+**Brand Tools** removes this friction by making brand navigation and copying one click away, directly inside WebStorm.
+
+---
+
+## ⚙️ Configuration
+Configurable options:
+- Core root folder name
+- Interlayer root folder name
+- Brand folder pattern
+- Optional virtual/all-theme folder
+- Brand list and display order
+
+(Default values are provided for common setups.)
+
+---
+
+## 🛠 Technical Notes
+- Target IDE: **WebStorm only**
+- Uses public IntelliJ Platform APIs
+- No blocking UI operations
+- Correct coroutine usage (no model access in UI dispatcher)
+- Designed for compatibility with future WebStorm versions
+
+---
+
+## 🚫 Out of Scope
+- File diffing or merge tools
+- Automatic mass synchronization between brands
+- Custom Git operations
+
+---
+
+## 🧪 Development & Testing
+Run plugin in sandbox:
+```bash
+./gradlew runIde
+```
+
+Build plugin distribution:
+```bash
+./gradlew buildPlugin
+```
+
+---
+
+## 📌 Summary
+**Brand Tools for WebStorm** makes multi-brand development:
+- Faster
+- Safer
+- Less error-prone
+
+by bringing brand-aware navigation and copy actions directly into the editor, using clear brand names instead of icons.
+
+---

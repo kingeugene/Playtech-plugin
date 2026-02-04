@@ -15,6 +15,7 @@ import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
 enum class BrandRootType {
@@ -53,10 +54,9 @@ class BrandService(private val project: Project) {
     private val logger = Logger.getInstance(BrandService::class.java)
 
     private val cache = ConcurrentHashMap<String, List<BrandState>>()
-    private val connection: MessageBusConnection
+    private val connection: MessageBusConnection = project.messageBus.connect()
 
     init {
-        connection = project.messageBus.connect()
         connection.subscribe(VirtualFileManager.VFS_CHANGES, object : BulkFileListener {
             override fun after(events: MutableList<out VFileEvent>) {
                 if (events.any { it.file != null && isThemeRelatedPath(it.file!!) }) {
@@ -71,10 +71,10 @@ class BrandService(private val project: Project) {
         return segments.any { it.startsWith("app-react") }
     }
 
-    fun dispose() {
-        connection.dispose()
-        cache.clear()
-    }
+//    fun dispose() {
+//        connection.dispose()
+//        cache.clear()
+//    }
 
     fun getBrandContext(file: VirtualFile): BrandContext? {
         val roots = getBrandRoots()
@@ -110,7 +110,13 @@ class BrandService(private val project: Project) {
     }
 
     fun getBrandRoots(): List<BrandRoot> {
-        val baseDir = project.baseDir ?: return emptyList()
+        val baseDir = project.basePath?.let {
+            VfsUtil.findFile(Paths.get(it), true)
+        }
+
+        if (baseDir == null) {
+            return emptyList()
+        }
 
         val candidates = baseDir.children.filter { it.isDirectory && it.name.startsWith("app-react") }
 
@@ -240,11 +246,6 @@ class BrandService(private val project: Project) {
             if (targetDir == null || !targetDir.isDirectory) {
                 // Create the target directory if it doesn't exist
                 targetDir = targetParent.createChildDirectory(project, newName)
-            }
-            
-            if (targetDir == null) {
-                logger.warn("Failed to create target directory '$newName' in ${targetParent.path}")
-                return null
             }
 
             // Copy all children (files and subdirectories)
